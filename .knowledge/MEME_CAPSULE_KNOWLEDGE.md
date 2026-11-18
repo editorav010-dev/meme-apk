@@ -1,11 +1,11 @@
-# MEME CAPSULE — MASTER KNOWLEDGE DOCUMENT & CANONICAL SYSTEM SPECIFICATION
+﻿# MEME CAPSULE — MASTER KNOWLEDGE DOCUMENT & CANONICAL SYSTEM SPECIFICATION
 ### The Definitive System Reference for Developers, AI Coding Agents, Curators, Product Teams & Marketers
 
 > **Document Type:** Canonical Master Architecture, Technical & Product Specification  
 > **Classification:** Living Project Context & Reusable AI Operating Reference Across All Codebases  
 > **App / System Name:** Meme Capsule  
 > **Android Package Identifier:** `com.meme.capsule`  
-> **Mobile App Version:** `v3.8` (`versionCode 30`) — Built APKs and AABs in `builds/` (`meme-capsule-v3.8.apk`, `meme-capsule-v3.8.aab`, `app-release.apk`) and `android/app/build/outputs/`  
+> **Mobile App Version:** `v3.8` (`versionCode 29`) — Built APKs and AABs in `builds/` (`meme-capsule-v3.8.apk`, `meme-capsule-v3.8.aab`, `app-release.apk`) and `android/app/build/outputs/`  
 > **Official Web Platform:** [https://memecapsule.wtf](https://memecapsule.wtf) (Vite / React Multi-Page Static Prerendered)  
 > **Serverless Edge Backend:** [https://meme-capsule-eww.pages.dev](https://meme-capsule-eww.pages.dev) (Cloudflare Pages, D1 SQLite, R2 CDN)  
 > **Project Team & Engineering Leadership:**  
@@ -39,6 +39,8 @@
    - 3.12 [Critical Engineering Guardrails & Styling Gotchas (Tailwind v4)](#312-critical-engineering-guardrails--styling-gotchas-tailwind-v4)
    - 3.13 [Phase 1 Android Analytics Instrumentation (Offline SQLite Queue, Consent & Diagnostics)](#313-phase-1-android-analytics-instrumentation-offline-sqlite-queue-consent--diagnostics)
    - 3.14 [First-Class Settings Tab Architecture & Redesign (v3.8)](#314-first-class-settings-tab-architecture--redesign-v38)
+   - 3.15 [Firebase Cloud Messaging (FCM) Push Notifications Integration (`com.meme.capsule`)](#315-firebase-cloud-messaging-fcm-push-notifications-integration-commemecapsule)
+   - 3.16 [Card Stack Physics, Dynamic Aspect-Ratio Morphing & Brag Launch Media](#316-card-stack-physics-dynamic-aspect-ratio-morphing--brag-launch-media)
 4. [PART B: PROMOTIONAL, PRESS & WEB PLATFORM (`memecapsule.wtf`)](#4-part-b-promotional-press--web-platform-memecapsulewtf)
    - 4.1 [Platform Architecture, Modernized Stack & Static HTML Prerendering](#41-platform-architecture-modernized-stack--static-html-prerendering)
    - 4.2 [Interactive Live Drop Preview Simulator, Upfront 10-Meme FIFO Buffer & Quota Lockout Bumper](#42-interactive-live-drop-preview-simulator-upfront-10-meme-fifo-buffer--quota-lockout-bumper)
@@ -138,7 +140,7 @@ Modern internet culture is trapped inside social media feeds (Instagram, TikTok,
 - **Pro Tier In-App Purchase:** One-time upgrade (`remove_ads_forever` via `@capgo/native-purchases`) unlocking Zero Ads, Unlimited Vault, and permanent Triple Drop access.
 - **Multi-Judge Consensus & SuperAdmin Arbitration:** Human curation engine (`/curate`) with Layer 0 keyboard navigation and binding consensus arbitration.
 - **3-Tier D1 Status Partitioning (Migration 012):** Explicit separation of Active Capsule (111), Superadmin Excluded (53), and Uncurated Backlog (4,947) across database, APIs, and `/admin` UI.
-- **Admin Control Panel & SQL Runner (`/admin`):** 5-metric top stats bar, dedicated `[EXCLUDED]` filter tab, R2 binary uploads, R2-to-D1 sync, and analytics recalculation.
+- **Admin Control Panel & SQL Runner (`/admin`):** Grouped Collection/Curation/Operations navigation, 5-metric top stats bar, dedicated `[EXCLUDED]` filter tab, R2 binary uploads, R2-to-D1 sync, SQL Playground, Push Notifications, responsive keyboard-accessible sidebar controls, and durable bulk image intake. The legacy Admin Analytics and Admin AI Categorisation views were retired in Phase 3; their retained backend contracts are separate from Android telemetry and notification workers.
 - **Token-Gated Safety Moderation (`/reports`):** Ingestion of user-flagged content (`POST /api/report`) with one-click soft-archival and `content_blacklist` enforcement.
 - **Multimodal AI Pre-Curator Loop (`/ai-judge`):** Gemini Vision and Python NVIDIA NIM Llama 3.2 11B Vision pipeline categorizing humor mechanisms, topics, and safety.
 
@@ -147,7 +149,7 @@ Modern internet culture is trapped inside social media feeds (Instagram, TikTok,
 - **Mobile Frontend:** React 19, TypeScript 5.8, Vite 6.2, Tailwind CSS v4 (`@tailwindcss/vite`), `@react-spring/web`, `@use-gesture/react`.
 - **Web Platform & Pre-rendering:** React 18, Vite 5, Tailwind CSS v3, React Router DOM v6, static HTML pre-rendering via `vite-plugin-prerender` with deterministic `ReactSSRRenderer` for GitHub Actions CI.
 - **Edge Backend:** **Cloudflare Pages Functions** running on V8 isolates with zero cold-start latency (`functions/api/*`, `functions/reports.ts`).
-- **Database:** **Cloudflare D1** (serverless SQLite at the edge) with 13 production migrations.
+- **Database:** **Cloudflare D1** (serverless SQLite at the edge) with additive repository migrations through `025`; migration `025` is the local durable-intake foundation pending production rollout.
 - **Media Storage:** **Cloudflare R2** (S3-compatible object storage with **$0.00 egress fees**).
 - **AI Evaluation Pipeline:** Multimodal Gemini Vision (`@google/genai`) on Cloudflare Functions and an offline Python runner executing **NVIDIA NIM Llama 3.2 11B Vision Instruct**.
 - **SEO / GEO / AEO:** 4 linked Schema.org JSON-LD entities (`WebSite`, `Organization`, `MobileApplication`, `FAQPage`), `llms.txt` and `llms-full.txt` protocols for frontier AI crawlers, and XML Sitemap.
@@ -157,10 +159,18 @@ The backend is completely serverless. When a client calls `GET /api/random-meme`
 ```sql
 SELECT m.* FROM memes m
 INNER JOIN meme_curation_final f ON m.id = f.meme_id
-WHERE m.is_active = 1 AND m.status = 'active' AND f.corpus_status = 'keep' AND m.random_key >= ?
-ORDER BY m.random_key ASC LIMIT 1;
+WHERE m.is_active = 1 AND m.status = 'active' AND f.corpus_status = 'keep'
+  AND m.random_key >= ?
+ORDER BY m.random_key ASC LIMIT 5;
 ```
-Any meme that is unfinalized, in judging, or excluded is mathematically impossible to retrieve via `/api/random-meme` or `/api/daily-meme`. Media assets are served directly from Cloudflare R2 via an edge CDN URL with global caching and zero egress charges.
+The random endpoint samples from a candidate window and accepts up to 50
+recent IDs through `exclude`, preventing short-session repetition. It combines
+wrap-around candidates when the window reaches the end, falls back without the
+exclusion list only when every eligible meme is excluded, and returns explicit
+no-store cache headers. Any meme that is unfinalized, in judging, or excluded
+is mathematically impossible to retrieve via `/api/random-meme` or
+`/api/daily-meme`. Media assets are served directly from Cloudflare R2 via an
+edge CDN URL with global caching and zero egress charges.
 
 ### Q9: How does its AI system work?
 - **Public Product:** **ZERO AI RECOMMENDATION ALGORITHMS.** Content delivery is randomized serendipity.
@@ -299,45 +309,6 @@ The card deck is orchestrated by `MemeStack.tsx` using `@react-spring/web` and `
 - **Instant-Touch Overlay Buttons (`MemeCard.tsx`):**
   - Because `MemeStack` attaches gesture handlers to the card with `touch-action: none`, standard click events can be swallowed during drag initiation.
   - The top-right `38px × 38px` Download & Share buttons and the bottom-right `34px × 34px` Report button execute on `onPointerDown` / `onTouchStart` with a `useRef` timestamp guard (250ms debounce) and `pointer-events-none` on inner SVG icons so touches register on the very first contact.
-
-### 3.4.1 Zero-Repetition Feed & Persistent Cross-Session Deduplication Engine (`src/App.tsx`)
-To permanently eliminate meme repetition across the ~700–800 active curated catalog without degrading swipe responsiveness:
-1. **Dual Persistent Cross-Session Seen Registries (`SEEN_MEMES_STORAGE_KEY` & `SEEN_MEME_IDS_STORAGE_KEY`):**
-   - Tracks seen meme image URLs in `localStorage` under `meme_capsule_seen_urls_v2` (with automatic backward compatibility migration from legacy `v1`).
-   - Tracks seen database UUIDs in `localStorage` under `meme_capsule_seen_ids_v2`.
-   - **Zero Premature Eviction**: No arbitrary size capping or halfway eviction (previous 650 cap removed). All viewed memes are retained across cold restarts, app updates, and background kills to mathematically guarantee 0% repetition until the user consumes 100% of the active catalog.
-   - Fully purged only when users deliberately trigger "Clear Past Viewing History & Stats" or "Delete All App History & Data" from the Settings tab.
-2. **Dynamic Server Exclusion Window (`getExcludeIdsForServer`):**
-   - Passes the last 50 seen database UUIDs (`?exclude=...`) to Cloudflare Pages `/api/random-meme`, allowing SQL-level exclusion (`m.id NOT IN (...)`) on the edge server.
-   - Dynamically appends any duplicate candidate IDs rejected during the active retry cycle so subsequent retries steer the database away from already-seen records.
-3. **Dual In-Flight Concurrency Locks (`inFlightUrlsRef` & `inFlightIdsRef`):**
-   - Pre-allocates in-flight lock sets for both URLs and UUIDs during the parallel 3-stream prefetch waves so concurrent background workers never fetch or preload duplicate cards.
-4. **Adaptive Retry Loop (`maxRetries = 35`) with Cycle Reset**:
-   - `fetchValidMeme()` validates each candidate against: (a) blocked/reported list, (b) active card, (c) live FIFO queue, (d) in-flight parallel fetches, and (e) persistent seen history by both image URL and unique database `id`.
-   - Expanded retry budget (up to 35 attempts) guarantees fresh memes even when >80% of the active catalog has been consumed.
-   - **Continuous Swiping & Catalog Exhaustion Fallback**: If a user consumes 100% of all active memes in the D1 database, the engine resets the seen history for Cycle 2, ensuring swiping is never blocked and the capsule is never depleted.
-5. **Hybrid Reddit Auxiliary Stream Integration (`pref_reddit_stream` enabled by default):**
-   - Enabled by default (`pref_reddit_stream !== 'false'`), interleaving fresh SFW Reddit drops every 3rd card alongside the curated D1 vault while allowing users to toggle to curated-only mode anytime in Settings.
-6. **Edge Cache-Busting Nonces (`fetchBackendMemePayload`):**
-   - Appends timestamps (`_ts`) and cryptographic random nonces (`_nonce`) to bypass Android OkHttp and Cloudflare edge caches.
-
-### 3.4.2 Reddit Attribution & On-Demand Info Pop-up Modal (`src/RedditInfoModal.tsx`, `MemeCard.tsx`)
-To keep meme artwork completely clean and unobstructed while preserving full attribution and community context:
-1. **Uncluttered Meme Card Surface:** Removed burned-in bottom text overlay (`title`, `author`, `subreddit`) from the active card deck.
-2. **Interactive Reddit Tag Badge (`MemeCard.tsx`):**
-   - When viewing Reddit stream drops, a cyber-yellow neo-brutalist badge (`[ REDDIT ℹ ]`) is rendered in the bottom right corner.
-   - Equipped with instant single-tap gesture recognition (`createTapProps`) and debounced touch handler, with drag-cancellation guard in `MemeStack` so tapping never triggers accidental card swiping.
-3. **Neo-Brutalist Reddit Info Pop-up (`RedditInfoModal.tsx`):**
-   - Tapping the Reddit tag launches an accessible modal displaying:
-     - Framed thumbnail preview of the drop.
-     - Unabridged original post title with dynamic line wrapping.
-     - Origin community subreddit (`r/{subreddit}`).
-     - Author attribution (`u/{author}`).
-     - Upvote counter / community reception (`▲ {likes}`).
-     - Source tag (`REDDIT AUXILIARY RELAY`).
-     - "OPEN ON REDDIT" direct external link and prominent "CLOSE" CTA.
-   - Also integrated directly into the Favorites list so users can inspect Reddit drop intel from their saved vault.
-4. **Streamlined Vault Save Feedback:** Removed the numeric storage count (`(X/100)`) from the toast notification when saving memes to the vault, cleanly presenting `SECURED IN VAULT!`.
 
 ### 3.5 Neo-Brutalist Viral Share Bottom Sheet & Social Dispatch System
 When the user taps Share (from the card overlay, bottom CTA bar, Meme Vault, or Mood Boards), the app opens `ShareModal.tsx`:
@@ -580,121 +551,20 @@ Settings was refactored from an ephemeral popup modal into an authentic first-cl
 - **Plugin & Native Bridge:**
   - Integrated `@capacitor/push-notifications` (v8.1.3) with Capacitor 8 container.
   - Added Android 13+ runtime permission: `<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />` in `android/app/src/main/AndroidManifest.xml`.
-  - Created Android high-importance notification channel `meme_capsule_drops` (importance 4, sound, badge, vibration).
   - Configured `google-services.json` in `android/app/google-services.json` and root, activating the Google Services Gradle plugin (`com.google.gms.google-services:4.4.4`).
-- **Push Notification Service & Deep-Link Payload Engine (`src/services/pushNotifications.ts` & `src/App.tsx`):**
+- **Push Notification Service (`src/services/pushNotifications.ts`):**
   - Manages permission requests, token acquisition, and error handling with native platform detection guard (`Capacitor.isNativePlatform()`).
-  - Utilizes `CapacitorHttp` native networking to register tokens directly with `POST /api/notifications/register`, avoiding WebView CORS preflight issues.
-  - Proactively resyncs cached tokens from `localStorage` on application startup.
-  - Comprehensive action listener (`pushNotificationActionPerformed`) routing:
-    - `screen: 'favorites'` -> `setActiveTab('favorites')`
-    - `screen: 'boards'` -> `setActiveTab('boards')`
-    - `screen: 'settings'` -> `setActiveTab('settings')`
-    - `screen: 'store' | 'pro' | 'premium'` -> `openStore()`
-    - `screen: 'drop' | action: 'drop'` -> switches to `'home'` tab and immediately triggers `fetchMeme()` to dispense a fresh drop.
-    - `screen: 'home'` -> `setActiveTab('home')`
-  - In-app foreground reception (`pushNotificationReceived`): displays non-intrusive arcade toast alert (`showToast`) and emits window event `meme_capsule_push_received`.
-- **Production Build Artifacts (v3.8 / versionCode 30):** Production Release AAB (`builds/app-release.aab` / `builds/meme-capsule-v3.8.aab`, 7.7MB, v2 signed), Release APK (`builds/app-release.apk` / `builds/meme-capsule-latest.apk` / `builds/meme-capsule-v3.8.apk`, 5.8MB), and Debug APK (`builds/meme-capsule-debug.apk`, 12MB) compiled and verified with Phone Gallery UI for Vault.
+  - Automatically syncs newly registered FCM tokens to the Cloudflare Pages backend endpoint (`POST /api/notifications/register`).
+  - Implements notification reception and action listeners (`pushNotificationActionPerformed`), dispatching custom window events (`meme_capsule_push_action`) and supporting deep-link navigation into `'home'`, `'favorites'`, `'boards'`, or `'settings'`.
+- **Build Artifacts:** Debug APK (`meme-capsule-debug.apk`, 14MB), Release APK (`app-release.apk` / `meme-capsule-latest.apk`, 5.8MB), and Release AAB (`app-release.aab`, 7.7MB) generated and committed to `builds/`.
 
-### 3.16 Navigation Dock, CTA Icon Symmetry & Reaction Picker Repositioning (`src/App.tsx`)
-- **Vault Symbol Harmonization:** The bottom navigation dock's Vault button symbol was updated from `<Flame size={22} strokeWidth={2.5} />` to `<Bookmark size={22} strokeWidth={2.5} />`, creating 100% visual symmetry with the canvas `SAVED` CTA button bookmark icon while preserving the neo-brutalist outline aesthetic across all 4 dock buttons (`Home`, `Vault / Favorites`, `Moodboards`, `Settings`).
-- **Reaction Picker Positioning:** Repositioned the reaction picker popup from the top of the canvas (`top-4`) down to just above the 4 CTA buttons (`bottom-4`), featuring a dismiss backdrop and native pointer/long-press detection on the LIKE button without accidental Like state toggling.
-- **Long-Press Reaction Picker Glitch & Oscillation Fix:**
-  - Resolved race condition and double-toggle oscillation where long-pressing the LIKE button caused the reaction picker to rapidly glitch, opening and immediately closing:
-    1. Replaced boolean toggle `setShowReactionPicker((prev) => !prev)` in long-press timer (450ms) and `onContextMenu` with explicit idempotent activation `setShowReactionPicker(true)`. Previously, Android's native long-press threshold (~500ms) fired a `contextmenu` event 50ms after the 450ms timer opened the picker, inverting `prev` and immediately slamming the reaction picker shut.
-    2. Added distance drag threshold check (`dist > 10px`) in `onPointerMove` and `onPointerLeave` cancellation so finger movement or drag gestures cancel the pending long-press timer.
-    3. Filtered `onPointerDown` to primary pointer/button only (`e.button === 0`).
-    4. Guarded synthetic click after long-press release via `isLikeLongPressRef` with a 250ms cooldown window to prevent accidental Like state toggling.
-    5. Supported tap-to-dismiss on the LIKE button when the reaction picker is already active.
-    6. Added `onPointerDown` event containment on the dismiss backdrop (`e.stopPropagation()`).
-    7. Ensured tapping VAULT dismisses any active reaction or board pickers.
-  - **Build Artifacts Recompiled:** Release APK (`builds/app-release.apk` / `builds/meme-capsule-latest.apk` / `builds/meme-capsule-v3.8.apk`, 6.1MB), Debug APK (`builds/meme-capsule-debug.apk`, 12.5MB), and Release AAB (`builds/app-release.aab` / `builds/meme-capsule-v3.8.aab`, 8.0MB) recompiled and synced.
-
-### 3.17 Mobile Phone Gallery UI Transformation for Meme Vault (`src/App.tsx`)
-- **Native Phone Album / Gallery Architecture:**
-  - Redesigned the Vault tab from a rigid vertical card list into an authentic mobile photo gallery layout modeled after iOS Photos and Android Google Photos.
-  - **Dynamic Multi-Column Grid:** Square photo tiles (`aspect-square`) with edge-to-edge mobile presentation, customizable column switcher (`[2 | 3 | 4]` columns), and subtle status indicators (liked heart, Reddit tag).
-  - **Fullscreen Media Viewer (Lightbox):** Tapping any photo tile immediately launches an immersive full-screen viewer with next/previous image navigation, image counter (`{index} / {total}`), and a 5-action mobile gallery toolbar (Like toggle, Native Share, MediaStore Gallery Download, Mood Board Pinning, and Vault Deletion with auto-advance).
-  - **Multi-Selection & Batch Actions:** "SELECT" mode allows tapping photo tiles with interactive circular checkboxes, accompanied by a sticky batch action bar for bulk Camera Roll saving, bulk Pinning, and bulk Deletion.
-  - **Album Filter Pills & Live Search:** Instant client-side search with clear action and quick category filter tabs (`ALL`, `❤️ LIKED`, `REDDIT`, `CURATED`).
-
-### 3.18 Reaction Dock Animations, Custom Emoji Support & Pin Bottom Sheet (`src/App.tsx`, `src/index.css`)
-- **Smooth Popover & Dock Animations:**
-  - Added spring slide-in and scale entrance animations for the reaction dock (`.animate-reaction-dock` with `@keyframes reaction-dock-in`, `0.26s cubic-bezier(0.16, 1, 0.3, 1)`), `#moreMenu` popover (`.animate-more-menu` with `@keyframes more-menu-slide-in`, `0.24s cubic-bezier(0.16, 1, 0.3, 1)`), and bottom sheets (`.animate-pin-sheet`).
-  - Added smooth fade-in transitions (`.animate-fadeIn`) to dimmed overlay backdrops.
-- **WhatsApp-Style Horizontal Reaction Scroll & Custom Emoji Additions:**
-  - Expanded reaction picker into a horizontally scrollable bar (`overflow-x-auto`, `scrollbar-none`, `touch-pan-x`) supporting default meme reactions (`💀`, `🔥`, `😂`, `🗿`, `❤️`, `👑`, `😭`, `🤡`, `🤯`, `💩`, `💯`, `🫡`) and user custom additions.
-  - Integrated a dedicated `+` button at the right end of the reaction bar opening an "ADD CUSTOM REACTION" bottom sheet with text input for native mobile emoji keyboard input plus a 32-sticker quick-pick preset grid.
-  - Custom emojis persist in `localStorage` under `meme_capsule_user_custom_reactions` and auto-apply reactions to the active meme.
-- **Clean-Slate Mood Boards Initialization (0 Default Boards):**
-  - Added clean-slate initialization check (`meme_capsule_boards_clean_slate_v39`) ensuring fresh installs and updates start with strictly 0 mood boards, letting users build and name their own custom boards from scratch.
-  - Purged legacy pre-populated/test boards while maintaining custom user boards.
-- **Mood Boards Pin Bottom Sheet & Scroll Optimization:**
-  - Converted the Pin to Mood Board picker from a static, cramped top overlay into a native Neo-Brutalist bottom sheet drawer (matching the Share Sheet) positioned at `bottom-0`.
-  - Added smooth vertical scrolling (`max-h-[48vh]`, `overflow-y-auto`, `overscroll-contain`, `WebkitOverflowScrolling: touch`) with touch isolation so scrolling boards never triggers card swiping or page dragging.
-  - Included a compact thumbnail preview row, "+ NEW BOARD" header shortcut, and an engaging empty state ("NO MOOD BOARDS YET") with "+ CREATE FIRST BOARD" action button.
-- **Production Build Artifacts:**
-  - Release APK (`builds/app-release.apk`, `builds/meme-capsule-latest.apk`, `builds/meme-capsule-v3.8.apk`, 5.8MB) and Release AAB (`builds/app-release.aab`, `builds/meme-capsule-v3.8.aab`, 7.7MB) recompiled and verified.
-
-### 3.19 Vault Non-Blocking Toast, Lightbox Safe-Area & Swipe Navigation Overhaul (v3.9 / VersionCode 31)
-- **Non-Blocking Vault Toast & Zero Swipe Delay (`src/App.tsx`):**
-  - Added `pointer-events-none select-none` to the `toastText` container in `src/App.tsx`, preventing toast alerts from intercepting drag/swipe touch gestures or blocking CTA button taps.
-  - Shortened notification toast auto-dismiss duration from 2500ms to 1500ms and added `toastTimeoutRef` cancellation so consecutive saves clear instantly without touch lockout or swipe delays.
-- **Android Status Bar & Notification Tray Safe-Area Optimization:**
-  - Resolved status bar clipping on mobile devices by adding `paddingTop: calc(env(safe-area-inset-top, 0px) + 12px)` and solid high-contrast styling (`bg-[#0d0c14]/95`, `border-b-[2px] border-white/20`) to the Vault Lightbox header.
-  - Replaced cramped close controls with a high-contrast Neo-Brutalist `BACK` button, centered photo index badge, and a dedicated high-visibility close (`✕`) button (`bg-[#FF2A85] text-white border-[2px] border-black shadow-[2px_2px_0px_#000]`), completely eliminating interference from Android notification icons and status bar elements.
-- **Touch & Pointer Swipe Navigation for Vault Gallery:**
-  - Removed chevron arrow buttons (`<ChevronLeft>` / `<ChevronRight>`) on photo sides.
-  - Implemented responsive horizontal touch & pointer swipe listeners (`onTouchStart`, `onTouchMove`, `onTouchEnd`, `onPointer*`) with real-time translation tracking, boundary resistance damping, and snap-to-advance logic (`dx > 36px` to navigate previous, `dx < -36px` to navigate next).
-- **Dedicated Gallery CTA Toolbar (SAVE, SHARE, REMOVE):**
-  - Added a prominent 3-column Neo-Brutalist primary action bar directly below the meme canvas and metadata:
-    - `SAVE`: Downloads meme directly to native Android MediaStore / device gallery.
-    - `SHARE`: Triggers native Android share sheet with viral share message.
-    - `REMOVE`: Removes the meme from the Vault with immediate visual feedback.
-  - Positioned secondary actions (`LIKE` toggle, swipe instruction hint, and `PIN TO BOARD`) beneath the primary CTAs with safe bottom insets (`calc(env(safe-area-inset-bottom, 0px) + 16px)`).
-- **Meme Canvas Border in Lightbox Gallery:**
-  - Added a signature Neo-Brutalist border (`border-[3px] border-secondary-container shadow-[6px_6px_0px_#000000] bg-black`) around the active meme canvas in the vault lightbox.
-- **Top Branded Header for Gallery Section:**
-  - Extended the signature Neo-Brutalist top header (`MEME CAPSULE` title with Settings shortcut and Store button) to display on the Gallery section (`activeTab === 'favorites'`), creating unified visual branding across both the landing page and photo gallery.
-  - Implemented mobile safe-area insets (`paddingTop: calc(env(safe-area-inset-top, 0px) + 8px)`) and adaptive content top spacing (`pt-2`) to avoid notch collision and prevent double-padding.
-- **Hidden Rewind Easter Egg Mechanism:**
-  - Added an invisible double-click and double-tap hit area in the negative space directly above the meme canvas (`src/App.tsx`).
-  - Double-clicking/double-tapping reverts to the previous meme from `memeHistory`, while preserving the active meme at the head of `memeQueue` so users can swipe forward again.
-  - Features an animated reel slide-down entrance (`from: { y: -220, scale: 0.92, opacity: 0.4 }, to: { y: 0, scale: 1.0, opacity: 1.0 }`) via `MemeStackRef.triggerRevert` and subtle haptic feedback. Completely hidden and unmentioned across all user-facing UI.
-- **Production Binaries:**
-  - Bumped version to `v3.9` (`versionCode 31`).
-  - Generated and verified `builds/app-release.apk`, `builds/meme-capsule-latest.apk`, `builds/meme-capsule-v3.9.apk` (5.8MB), `builds/meme-capsule-debug.apk` (12MB), and `builds/app-release.aab`, `builds/meme-capsule-v3.9.aab` (7.7MB).
-
-### 3.20 On-Demand Mood Board Ad Reward Flow & Full-Page Settings Redesign (v3.9 / VersionCode 31)
-- **On-Demand Mood Board Ad Flow (`src/App.tsx`):**
-  - Completely removed the static inline "WATCH AD FOR +1 BOARD" banner block from the Mood Boards tab.
-  - Implemented on-demand board limit interception (`isBoardLimitModalOpen`): when a free-tier user reaches their mood board limit and taps `+ NEW BOARD`, a dedicated modal is presented rather than cluttering the tab UI.
-  - Watching a rewarded video ad grants `+1` bonus board slot (`grantBonusBoard`), increments the user's quota, and automatically opens the board creation composer.
-  - Integrated direct CTA to unlock unlimited boards via the Neo-Brutalist Store.
-- **Full-Page Settings Architecture (`src/App.tsx`):**
-  - Transformed Settings from an enclosed modal card with heavy drop-shadows into a first-class, full-width page layout matching Mood Boards and Vault Gallery (`max-w-[840px] px-1 sm:px-2 pb-16`).
-  - Maintained sticky top header (`MEME CAPSULE` with toggle back to Home) and smooth segmented category navigation (`EXPERIENCE`, `MEMBERSHIP`, `PRIVACY`).
-  - Updated the Settings footer metadata label to `MEME CAPSULE v3.9 (BUILD 31)`.
-- **Production Binaries:**
-  - Generated and verified `builds/app-release.apk`, `builds/meme-capsule-latest.apk`, `builds/meme-capsule-v3.9.apk` (5.8MB), `builds/meme-capsule-debug.apk` (12MB), and `builds/app-release.aab`, `builds/meme-capsule-v3.9.aab` (7.7MB).
-
-### 3.21 Gallery Lightbox Layout Optimization & Custom Reactions Redesign (v3.9 / VersionCode 31)
-- **Vault Lightbox CTA Placement & Revert Button Styling (`src/App.tsx`):**
-  - Relocated the primary CTAs (`SAVE`, `SHARE`, `REMOVE`) and secondary controls (`LIKE`, `SWIPE TO BROWSE`, `PIN TO BOARD`) directly into the center content stack, placing them **just below the meme canvas and metadata**.
-  - Completely removed the separated bottom toolbar, eliminating the awkward vertical gap on tall phone screens.
-  - Upgraded the `< ALBUM` back button with signature Neo-Brutalist styling (`bg-[#f4c300] text-black border-[2px] border-black shadow-[3px_3px_0px_#000] font-label-xl font-black text-[12px] uppercase tracking-wider`).
-  - Redesigned the photo index badge with high-contrast arcade styling (`font-mono text-[12px] bg-[#1c1c1e] text-white border-[2px] border-black px-3 py-1 shadow-[2.5px_2.5px_0px_#000]`) and the close button (`bg-[#FF2A85] text-white border-[2px] border-black shadow-[3px_3px_0px_#000]`).
-  - Elevated Lightbox z-index to `z-[1050]` for an unobstructed full-screen viewing experience over the navigation dock.
-- **Reaction Picker Dock & Custom Reactions Tab Redesign (`src/App.tsx`):**
-  - Anchored the floating Reaction Picker Dock directly above `ctaRow` (`bottom-full mb-3 left-1/2 -translate-x-1/2 w-full max-w-[356px]`), positioning it exactly above the 4 primary CTA buttons on the home feed.
-  - Standardized all reaction buttons as uniform Neo-Brutalist tactile tiles (`w-[46px] h-[52px]` with `border-[2px] border-black shadow-[2px_2px_0px_#000]`, yellow labels, and hot-pink active states) alongside an identically dimensioned `(+) ADD` button.
-  - Redesigned the Custom Reactions modal as a high-fidelity Neo-Brutalist bottom sheet (`isAddEmojiModalOpen`):
-    - Branded yellow header banner with `Smile` icon and bold `CUSTOM REACTIONS` title.
-    - Custom emoji input field with `+ ADD` submit action.
-    - Interactive "YOUR CUSTOM EMOJIS" chip row with individual delete (`✕`) controls and `CLEAR ALL` option.
-    - Responsive 8-column grid of 32 popular meme presets (`PRESET_EMOJIS_GRID`).
-- **Production Binaries:**
-  - Recompiled and verified `builds/app-release.apk`, `builds/meme-capsule-latest.apk`, `builds/meme-capsule-v3.9.apk` (5.8MB), `builds/meme-capsule-debug.apk` (12MB), and `builds/app-release.aab`, `builds/meme-capsule-v3.9.aab` (7.7MB).
+### 3.16 Card Stack Physics, Dynamic Aspect-Ratio Morphing & Brag Launch Media
+- **Frontend Swiping & Morphing Architecture (`stack_card_machenism.md`):**
+  - Documented complete mathematical physics of the 4-card 3D perspective spring stack (`@use-gesture/react` + `@react-spring/web`).
+  - Outlined zero-jank image dimension pre-sniffing (`sniffImageDimensions`) with memory LRU cache and 220ms cubic-bezier dynamic canvas morphing without clipping or letterbox distortion.
+  - Added mobile resilience patterns including background resume hydration via `visibilitychange` and 2.5s decryption shimmer watchdogs.
+- **Product Launch Assets & Brag Workflow (`brag/`, `screenshots/`, `brag-final.mp4`):**
+  - Produced 30s 1080x1920 launch showcase video (`brag-final.mp4`) with synced cyberpunk music and 9-page visual asset documentation.
 
 ---
 
@@ -824,10 +694,10 @@ The backend is completely serverless, deployed on Cloudflare Pages (`https://mem
 - **`POST /api/report`**: Receives user safety reports and logs them in `meme_reports`.
 - **`/reports`**: Serves the standalone HTML/CSS moderation dashboard for reviewing flagged content.
 - **`/api/cat/*` & `/api/curate/*`**: Authenticated endpoints serving the multi-judge curation system.
-- **`/api/admin/*`**: Token-protected administrative endpoints for storage syncing, SQL execution, and analytics management.
+- **`/api/admin/*`**: Token-protected administrative endpoints for storage syncing, SQL execution, retained analytics management, and durable bulk intake (`/api/admin/ingestion/*`).
 
 ### 5.2 Cloudflare D1 Database Schemas & 3-Tier Partitioning Architecture (Migration 012)
-Meme Capsule uses Cloudflare D1 (serverless SQLite). The database schema has evolved through 13 migration files (`d1/migrations/`).
+Meme Capsule uses Cloudflare D1 (serverless SQLite). The repository schema has evolved through additive migrations to `025` (`d1/migrations/`). Migration `025_durable_meme_ingestion.sql` adds durable batch, item, and independent Judge 4/5 advisory-evaluation state without changing the publication gate.
 
 #### The 3-Tier Partitioning Architecture (`curation_status`):
 To prevent mixing rejected memes with uncurated backlog items, Migration 012 introduced the `curation_status` column on the `memes` table:
@@ -908,6 +778,10 @@ When judges diverge in their votes, the meme surfaces in the **SuperAdmin Comman
 
 ### 5.6 Admin Console, 5-Metric Status Bar & SQL Runner (`/admin`)
 Token-protected control center (`ADMIN_API_TOKEN`):
+- **Grouped Navigation:** Collection (`Meme Vault`, `Add Memes`), Curation links (`Human Curation`, `AI Judge Workflow`, `Reports / Moderation`), and Operations (`Push Notifications`, `SQL Playground`, local drafts, and R2 sync).
+- **Responsive Sidebar:** Desktop collapse to an icon rail with hover/focus expansion, accessible labels/tooltips and pin/toggle control; mobile drawer with an accessible overlay. The legacy Admin Analytics and Admin AI Categorisation React views remain removed while their backend contracts are preserved.
+- **Phase 4 Bulk Intake:** Add Memes accepts up to 50 images by multi-select or drag/drop, previews and validates them, generates stable SHA-256 intake IDs, warns about duplicate content, and uploads with bounded concurrency. Durable batch/job/evaluation state survives refreshes; failed items can be retried without publishing content.
+- **Private Intake Gate:** Migration `025` stores archived/inactive intake metadata, upload recovery state, independent Judge 4/5 advisory evaluations, leases, and retries. New intake items become visible to human curators only at `human_ready` after both advisory evaluations succeed. AI never writes human ballots or final keeps.
 - **Top Stats Bar:** Displays 5 distinct metrics:
   - `TOTAL`: **5111**
   - `ACTIVE`: **111**
@@ -918,7 +792,7 @@ Token-protected control center (`ADMIN_API_TOKEN`):
 - **Row Presentation:** Excluded memes display a high-visibility red `EXCLUDED` badge and strikethrough title.
 - **R2 Storage Sync:** Scans R2 bucket, identifies unindexed media files, and inserts them into D1 as new meme candidates.
 - **SQL Runner:** Allows administrators to execute raw SQLite queries directly against D1 with safety guards.
-- **Analytics Management:** Triggers the recalculation engine and provides CSV/Excel export capabilities.
+- **Retained Backend Analytics:** Legacy Admin analytics recalculation and query endpoints remain available for compatibility, but the former Admin Analytics React view is no longer mounted. Android telemetry, privacy/deletion APIs, live readers, notification delivery, and scheduled workers remain active.
 
 ### 5.7 Token-Gated Safety Moderation & Blacklisting (`/reports`)
 Standalone, token-protected dashboard rendering directly from `functions/reports.ts`:
@@ -1003,12 +877,14 @@ All three codebases share a unified **Neo-Brutalist Cyber-Arcade** design langua
 | **Promo Web (`.wtf`)** | Google AdSense Unit `meme1` | `[IMPLEMENTED]` | `AdBanner.tsx` (`slot 6291908699`, deferred load) |
 | **Promo Web (`.wtf`)** | Deterministic Static Prerender (6 Routes) | `[IMPLEMENTED]` | `vite-plugin-prerender` + per-route SEO injection |
 | **Edge Backend** | Serverless Edge API on Cloudflare Pages | `[IMPLEMENTED]` | `functions/api/random-meme.ts`, `daily-meme.ts`, etc. |
-| **Edge Backend** | Cloudflare D1 SQLite Database (13 Migrations)| `[IMPLEMENTED]` | `d1/migrations/` (000 through 012) |
+| **Edge Backend** | Cloudflare D1 SQLite Database (additive migrations through 025)| `[IMPLEMENTED LOCALLY]` | `d1/migrations/` (025 adds durable bulk intake; production rollout pending) |
 | **Edge Backend** | 3-Tier Status Partitioning (Migration 012) | `[IMPLEMENTED]` | `curation_status`: 111 Keep, 53 Excluded, 4,947 Backlog |
 | **Edge Backend** | Cloudflare R2 Media Bucket (`env.BUCKET`) | `[IMPLEMENTED]` | `wrangler.toml`, zero egress public CDN |
 | **Edge Backend** | Multi-Judge Consensus Portal (`/curate`) | `[IMPLEMENTED]` | `src/curate/CurateApp.tsx` (Layer 0 keyboard shortcuts) |
 | **Edge Backend** | SuperAdmin Arbitration Dashboard | `[IMPLEMENTED]` | `src/curate/super/CurateSuperDashboard.tsx` |
 | **Edge Backend** | Admin Console with 5 Stats Cards (`/admin`)| `[IMPLEMENTED]` | `src/admin/AdminApp.tsx` (Total, Active, Excl, Arch, Draft)|
+| **Edge Backend** | Admin Phase 3 navigation and retired legacy views | `[IMPLEMENTED]` | `src/admin/AdminApp.tsx`, `src/admin/admin.css`; legacy Admin Analytics/AI UI removed while backend contracts remain |
+| **Edge Backend** | Durable Bulk Image Intake (`/admin`)| `[IMPLEMENTED LOCALLY]` | `src/admin/BulkIngestionWorkspace.tsx`, `functions/api/admin/ingestion/*`, migration 025 |
 | **Edge Backend** | Token-Gated Moderation Dashboard (`/reports`)| `[IMPLEMENTED]` | `functions/reports.ts` (Archive & Blacklist actions) |
 | **Edge Backend** | Multimodal AI Pre-Curator Loop (`/ai-judge`)| `[IMPLEMENTED]` | Gemini Vision API & NVIDIA NIM Llama 3.2 Vision runner |
 | **Edge Backend** | Telemetry Recalculation Engine | `[IMPLEMENTED]` | `functions/api/admin/analytics/recalculate.ts` |
@@ -1127,7 +1003,7 @@ ECOSYSTEM STRUCTURE:
    - Core Features: Live Drop Simulator (upfront 10-meme FIFO prefetch buffer + lockout bumper with Play Store UTM tracking), 3D interactive phone mockups (5 authentic WebP captures + lightbox zoom), Kage atmospheric UI (Preloader, CustomCursor, GrainOverlay, Vignette, ScrollRail), Section 04.5 Under the Hood, /about Press Kit (copy kit & brand downloads), /privacy policy, Formspree contact form (xwlenwzr with privacy consent), Google AdSense unit meme1 (slot 6291908699, ca-pub-2093403233028868), and SEO/GEO (llms.txt, Schema.org).
 
 3. SERVERLESS EDGE BACKEND & INTERNAL WORKBENCHES (meme-capsule-eww.pages.dev - This Repo):
-   - Tech: Cloudflare Pages Functions, Cloudflare D1 (SQLite with 13 migrations), Cloudflare R2 (bucket memes, $0.00 egress).
+   - Tech: Cloudflare Pages Functions, Cloudflare D1 (SQLite with additive migrations through 025), Cloudflare R2 (bucket memes, $0.00 egress).
    - 3-Tier Status Partitioning (Migration 012):
      * curation_status = 'keep' (111 memes, status = 'active', is_active = 1) -> Live in public Capsule drops.
      * curation_status = 'excluded' (53 memes, status = 'archived', is_active = 0) -> Authoritatively rejected by Superadmin.
@@ -1135,7 +1011,7 @@ ECOSYSTEM STRUCTURE:
      * Total Corpus: 5,111 memes.
    - Internal Tools (Neo-Brutalist dark theme #121212, Anton/Oswald fonts):
      * /curate & /categorise: Multi-judge consensus curation with Layer 0 keyboard shortcuts (K, E, D, L) and SuperAdmin conflict arbitration.
-     * /admin: 5-metric status bar (Total 5111, Active 111, Excluded 53, Archived 4947, Drafts 0), dedicated [EXCLUDED] filter tab, D1/R2 sync, SQL runner, analytics recalculation.
+     * /admin: Grouped Collection/Curation/Operations navigation, 5-metric status bar, dedicated [EXCLUDED] filter tab, D1/R2 sync, SQL runner, Push Notifications, responsive sidebar, and durable bulk image intake. Legacy Admin Analytics and Admin AI Categorisation UI are removed; retained backend endpoints remain separate from Android telemetry.
      * /reports: Token-gated moderation dashboard for user-flagged memes (archive / blacklist).
      * /ai-judge: Multimodal vision loop (Gemini Vision + NVIDIA NIM Llama 3.2 Vision runner) for pre-curation recommendations.
    - Note: Old pastel root landing UI (App.tsx, styles.css) has been REMOVED. Default route / serves <CurateApp />.
@@ -1147,7 +1023,3 @@ CRITICAL RULES & CONSTRAINTS:
 4. CLEAR CODEBASE BOUNDARIES: Maintain strict separation between Mobile APK, Promo Web, and Edge Backend.
 =========================================================
 ```
-
-
-
-

@@ -16,3 +16,4 @@ analytics.properties
 secrets.properties
 .idea/
 *.iml
+brag-output-*/

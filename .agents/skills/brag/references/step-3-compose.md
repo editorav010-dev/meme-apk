@@ -2,7 +2,7 @@
 
 ## Create the composition brief
 
-Write `brag-output/composition-brief.md` before creating or editing the Hyperframes composition.
+Write `<output-dir>/composition-brief.md` before creating or editing the Hyperframes composition.
 
 ```markdown
 # Hyperframes Composition Brief: [App Name]
@@ -11,8 +11,8 @@ Write `brag-output/composition-brief.md` before creating or editing the Hyperfra
 Create a short launch-style brag video for [App Name].
 
 ## Output
-- Composition directory: `brag-output/composition/`
-- Rendered video: `brag-output/brag.mp4`
+- Composition directory: `<output-dir>/composition/`
+- Rendered video: `<output-dir>/brag.mp4`
 - Format: [landscape / vertical / square] — [width]x[height]
 - Duration: [15-25 seconds]
 
@@ -47,7 +47,7 @@ Create a short launch-style brag video for [App Name].
 - Visual references from the project: [short list]
 
 ## Storyboard
-Use the storyboard in `brag-output/brag-plan.md` as the creative contract.
+Use the storyboard in `<output-dir>/brag-plan.md` as the creative contract.
 
 Scene summary:
 1. [Scene name] — [duration]s — [what must be seen / read]
@@ -67,10 +67,10 @@ Scene summary:
 - SFX selection guidance: [how sound should match motion and interaction; examples only, not rigid rules]
 - SFX analysis guidance: [path to sfx-analysis.md/json if present; use lower high-frequency-risk sounds for repeated or polished moments]
 - Exact SFX choice: Hyperframes should choose filenames, timestamps, density, and volume based on the implemented animation.
-- Audio files: copy the chosen music and any Hyperframes-selected SFX into `brag-output/composition/assets/`
+- Audio files: copy the chosen music and any Hyperframes-selected SFX into `<output-dir>/composition/assets/`
 
 ## Hyperframes Instructions
-Load the composition-building Hyperframes domain skills — `hyperframes-core` (composition contract + `data-*` timing), `hyperframes-animation` (motion), `hyperframes-creative` (design spec, beats, audio-reactive), `hyperframes-keyframes` (seek-safe keyframes), and `hyperframes-cli` (lint/check/render). /brag is its own workflow: do not enter the `hyperframes` entry-point intent interview and do not route into its generic promo / launch-video workflow. Prefer native Hyperframes conventions over anything in `/brag`.
+Load the composition-building Hyperframes skills — `hyperframes` (composition contract + `data-*` timing, `references/format.md`; motion, eases and seek-safe keyframes in `references/motion.md`; look in `references/look.md`), `hyperframes-registry` (ready-made effects, transitions, titles), `media-use` (music, SFX, audio-reactive data), and `hyperframes-cli` (lint/check/render). /brag is its own workflow: skip the `hyperframes` storyline step: don't read `references/types/*` or `references/story.md`, don't propose storylines, and don't write a `SPEC.md`. The brag plan and composition brief replace them, including the LOOK line `references/look.md` asks for. Also skip its `usage`, `history`, `feedback` and REVIEW.md steps; `check` is brag's gate. Do not route into its generic launch-video workflow. Prefer native Hyperframes conventions over anything in `/brag`.
 
 Requirements:
 - Show at least one real UI, copy, or visual element from the source project.
@@ -85,6 +85,7 @@ Requirements:
 - When music is present and the treatment is not `none`, consider Hyperframes audio-reactive workflow: extract audio data and use RMS/frequency bands for subtle, brand-specific motion. Good targets are glow, depth, background warmth, card presence, title emphasis, or other existing visual elements. Avoid waveform/equalizer visuals, musical-note graphics, generic particle systems, strobing, or heavy pulsing.
 - Use local assets for audio and any required runtime/media dependencies when possible.
 - Run `hyperframes check` before render — it is brag's single gate.
+- Keep creation and rendering local. Remote or publishing workflows require a separate explicit user request.
 ```
 
 The brief is the boundary: if a detail belongs to product positioning, copy, tone, source material, or selection of moments, `/brag` should specify it. If a detail belongs to composition implementation, Hyperframes should decide it.
@@ -97,10 +98,10 @@ Read [audio.md](audio.md). Copy the planned music into `<output-dir>/composition
 
 ```bash
 mkdir -p <output-dir>/composition/assets/music
-cp <skill-assets>/music/<track>.mp3 <output-dir>/composition/assets/music/
+cp <skill-dir>/assets/music/<track>.mp3 <output-dir>/composition/assets/music/
 ```
 
-When running from an installed Claude skill, `<skill-assets>` is `~/.claude/skills/brag/assets/`. From the repo, it is `skills/brag/assets/`.
+`<skill-dir>` is this skill's own directory (see "Skill directory" in `SKILL.md`).
 
 Hyperframes copies any SFX it selects into the same `assets/` tree after choosing exact files.
 
@@ -126,8 +127,8 @@ npx hyperframes tts "<narration text or path to script>" \
 ```
 
 If the user wants a different Kokoro voice, run `npx hyperframes tts --list`
-to see the available options. The command above is the voice implementation
-for this PR and should be used directly.
+to see the available options. By default, use the command above to generate
+narration.
 
 Wire it into the composition on its own track. Music ducks to 0.12–0.15 for the duration of the voiceover, then returns to its normal level:
 
@@ -135,7 +136,7 @@ Wire it into the composition on its own track. Music ducks to 0.12–0.15 for th
 <audio id="vo" data-start="0" data-track-index="3" data-volume="1" src="assets/voiceover.wav"></audio>
 ```
 
-Scene durations must flex to match the generated audio — check the WAV duration after generation and adjust `data-duration` values accordingly. Do not hardcode scene lengths when voiceover is present; let the voice set the pace.
+The 15-25 second window holds whether or not narration is on. Write the narration script to fit that window. Within the window, scene durations flex to match the generated audio rather than being fixed in advance: check the WAV duration after generation and adjust `data-duration` values accordingly. If the rendered narration overruns the window, cut the script and regenerate; do not stretch the video past 25 seconds to fit it.
 
 ---
 
@@ -143,7 +144,7 @@ Scene durations must flex to match the generated audio — check the WAV duratio
 
 When music is present and the treatment is not `none`, the composition can react to per-frame audio data. **Delegate the extraction to the Hyperframes audio-reactive workflow** — `/brag` does not ship an extraction script and must not hardcode a path to one.
 
-In the composition step, follow the audio-reactive guidance owned by the `hyperframes-creative` skill (let that skill locate its own files). It owns the data format, the extraction helper (which ships with that skill, not with `/brag`, so don't hardcode a path to it), and the per-frame sampling pattern. Ask Hyperframes to extract the audio data and wire at least one visual element to it.
+In the composition step, follow the audio-reactive guidance owned by the `media-use` skill (`audio/references/captions/motion.md`; let that skill locate its own files). That file is written for captions: use its build-time audio modulation pattern on brand elements (glow, halo, card presence), not on caption groups. It owns the data format, the extraction helper (`audio/scripts/extract-audio-data.py`, which ships with that skill, not with `/brag`, so resolve it through the skill's own directory), and the per-frame sampling pattern. Ask Hyperframes to extract the audio data and wire at least one visual element to it.
 
 If extraction is unavailable (no helper, or ffmpeg missing), note it in the brief and skip audio-reactive — do not block the render.
 
@@ -176,19 +177,20 @@ This gives you two layers of musicality: the big moments land on the strongest h
 
 Do not force every tween onto a beat — readability and scene pacing come first. If snapping a tween to a beat hurts copy legibility or the product story, use the natural timing instead.
 
-If SFX are enabled, also pass `skills/brag/assets/sfx/sfx-analysis.md` as selection guidance. Prefer low high-frequency-risk files for repeated or polished moments. SFX on sequential events should fire at the same timestamp as the visual — the sound and motion land together.
+If SFX are enabled, also pass `<skill-dir>/assets/sfx/sfx-analysis.md` as selection guidance. Prefer low high-frequency-risk files for repeated or polished moments. SFX on sequential events should fire at the same timestamp as the visual — the sound and motion land together.
 
 ---
 
 ## Call Hyperframes
 
-After `brag-output/brag-plan.md`, `brag-output/composition-brief.md`, and selected audio assets exist:
+After `<output-dir>/brag-plan.md`, `<output-dir>/composition-brief.md`, and selected audio assets exist:
 
-1. Load the Hyperframes domain skills (`hyperframes-core`, `hyperframes-animation`, `hyperframes-creative`, `hyperframes-keyframes`, `hyperframes-cli`) to create or update `brag-output/composition/`. /brag is its own workflow — do not enter the `hyperframes` entry-point intent interview or route into its generic promo / launch-video workflow.
+1. Load the Hyperframes skills (`hyperframes`, `hyperframes-registry`, `media-use`, `hyperframes-cli`) to create or update `<output-dir>/composition/`. /brag is its own workflow — skip the `hyperframes` storyline step: don't read `references/types/*` or `references/story.md`, don't propose storylines, and don't write a `SPEC.md`. The brag plan and composition brief replace them, including the LOOK line `references/look.md` asks for. Also skip its `usage`, `history`, `feedback` and REVIEW.md steps; `check` is brag's gate. Do not route into its generic launch-video workflow.
 2. Pass Hyperframes the composition brief, the brag plan, and the source files it should reference.
 3. Let Hyperframes choose the implementation details.
 4. Run Hyperframes check (the single gate before render).
-5. Render to `brag-output/brag.mp4`.
+5. Render to `<output-dir>/brag.mp4`.
+6. Keep creation and rendering local. Remote or publishing workflows require a separate explicit user request.
 
 Do not manually copy stale composition snippets from this skill into the output. The point of delegating is to benefit from the latest Hyperframes guidance.
 
@@ -206,5 +208,30 @@ Before moving to delivery, verify:
 - [ ] At least 1 major tween is beat-locked to a strong cue (a `strongCue`, or the highest-`strength` beat from `hyperframes beats`) within ±0.15s, marked `// beat-locked` (or natural timing was chosen for readability).
 - [ ] Sequential events (cards, stats, list items) snap to consecutive `beats[]` timestamps (±0.10s), marked `// beat-grid` (or natural timing was chosen for readability).
 - [ ] The composition shows at least one real UI, copy, or visual element from the project.
+- [ ] Every factual claim on screen is grounded in the project (see below).
 - [ ] Total duration is 15-25 seconds.
 - [ ] Hyperframes check passes, or any blocker is documented for the user.
+
+### Grounding factual claims
+
+`hyperframes check` audits structure. It has no opinion on copy, so a scene
+can read "Ships 10x faster" — a sentence nobody in the project ever wrote —
+and still come back clean. Read the composition once with this question in
+mind, because nothing else will ask it.
+
+The line is between what the video *asserts* and how it *says* it.
+
+**Must be grounded.** Names, numbers, capabilities, feature claims, quotes,
+anything presented as the product's own copy. If a line states something about
+the product, that something has to appear in the project — its files, its
+README, its UI, its actual output. Re-cased, trimmed or split across elements
+is fine; invented is not. "Streamline your workflow" fails not because it is
+generic but because it is a claim the project never makes.
+
+**Free to invent.** Tone, framing, jokes, hooks, transitions, connective
+narration. "Here's the part nobody asked for" is made up and welcome — it is
+the craft, and it asserts nothing about the product.
+
+When a line you want is not grounded, the fix is usually to quote what the
+project does say, which is almost always stranger and better than the
+invented version.
