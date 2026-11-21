@@ -348,6 +348,14 @@ Registered on the Android WebView as `window.MemeCapsuleAndroid`:
 - **Meme Vault:** Persistent offline favorites list stored in `localStorage('meme_favorites')` with instant client-side search. Free tier users can save up to 20 memes (`FREE_VAULT_LIMIT = 20`); Pro users have unlimited storage.
 - **Mood Boards ("Pinned Energy"):** Color-coded thematic binders (`primary`, `secondary`, `tertiary`) created via `CreateBoardModal.tsx`.
 - **Pinboard Synchronization:** When a meme is pinned to a board, the system synchronizes both `meme_pinboard` and `meme_favorites` records to guarantee that pinned meme thumbnails always render reliably even if the meme was not previously saved to the main vault.
+- **Gallery-Style Preview Bottom Sheet (`VaultPreviewSheet.tsx`):**
+  - **Docking Physics & Peeking Scrim:** Anchored flush at bottom (`bottom: 0`, `paddingBottom: max(env(safe-area-inset-bottom, 0px), 12px)`) with an explicit top anchor (`top: max(calc(env(safe-area-inset-top, 0px) + 90px), 104px)`) and inner sheet `height: 100%`, completely eliminating stage collapse and guaranteeing a huge ~485px uncollapsible stage for Section B while leaving the top ~12% (~104px) of the Meme Vault screen visible behind a dimmed/blurred scrim (`bg-black/70 backdrop-blur-[4px]`).
+  - **Header Row (Section A):** Neo-Brutalist counter box `[active / total]`, Reddit info CTA (orange) or Curated report CTA (red), and pink close button `×`.
+  - **Main Meme Preview Stage (Section B):** Zero-text stage where the meme is the hero (no title, author, or subreddit clutter). The purple border frame (`border-[3px] border-[#9b30ff] shadow-[4px_4px_0px_#f4c300]`) tightly hugs the meme's natural aspect ratio, completely eliminating pillarboxes and letterboxes.
+  - **3-Slot Virtualized Sliding Carousel:** Native smartphone gallery horizontal swiping (`[prev, current, next]`) with 1:1 finger tracking, 0.28x boundary rubber-banding, velocity commit (`|vx| > 0.4px/ms`), and strict gesture axis-locking between horizontal swipe and vertical sheet dismissal.
+  - **4-Button Neo-Brutalist CTA Row (Section C):** 100% Home Feed parity featuring `LIKE` (#FF2A85), `REMOVE` (#A855F7), `PIN` (#FACC15), and `MORE` (#00E5FF) with upward popover (`SHARE`, `DOWNLOAD`, `REPORT`), tactile press physics, and the full 3-layer ink-burst (`.ink-ripple`, 6-tick radial SVG burst, and icon bounce).
+  - **Horizontal Thumbnail Filmstrip (Section D):** Auto-centering horizontal thumbnail tray with active 54px yellow-bordered thumbnail and indicator bar, inactive 48px thumbnails, and bottom gesture bar.
+  - **Sub-Modal Stacking:** Root modals (`BoardPicker`, `RedditInfoModal`, `ReportModal`) elevated to `z-[1070]` so they seamlessly display on top of the preview sheet without collisions.
 
 ### 3.8 Mobile Monetization (AdMob + Google Play In-App Purchases & Neo-Brutalist Store)
 - **Google AdMob:**
@@ -565,6 +573,29 @@ Settings was refactored from an ephemeral popup modal into an authentic first-cl
   - Added mobile resilience patterns including background resume hydration via `visibilitychange` and 2.5s decryption shimmer watchdogs.
 - **Product Launch Assets & Brag Workflow (`brag/`, `screenshots/`, `brag-final.mp4`):**
   - Produced 30s 1080x1920 launch showcase video (`brag-final.mp4`) with synced cyberpunk music and 9-page visual asset documentation.
+
+### 3.22 Meme Vault Gallery-Style Preview Bottom Sheet (`VaultPreviewSheet.tsx`)
+- **Native Photo-Gallery Architecture (`src/components/VaultPreviewSheet.tsx`):**
+  - Replaced the legacy inline modal lightbox in `activeTab === 'favorites'` with a dedicated, gesture-driven photo gallery bottom sheet (`z-[1050]`).
+  - **3-Slot Virtualized Pager (`[prev, current, next]`):** High-performance horizontal swiping with finger-tracking lerp, velocity flicking, and dampening overscroll resistance at boundaries (`0.3x`). Smooth 0.22s spring transitions between memes, updating counter badge and active index seamlessly.
+  - **Gesture Isolation:** Strict gesture segmentation via `touch-action: pan-y` on viewport and `touch-action: pan-x` on filmstrip preventing conflicting parent scroll handlers.
+  - **Dynamic Aspect Ratio Framing:** Pre-computes and caches natural image dimensions (`sniffImageDimensions` / `memeDimensionCache`), applying tight aspect-ratio neon purple/yellow border cards (`computeCanvasDimensions`) without layout jump or black sidebars.
+- **Ink-Burst Micro-Interactions (`src/components/CtaInkBurst.tsx`):**
+  - Shared `useCtaInkBurst` hook and `<CtaInkBurstOverlay />` providing 450ms particle bursts on button presses.
+- **Identical 4-Button Home-Screen CTA Toolbar:**
+  - Standardized `.mc-cta-btn` buttons (`SAVE`, `SHARE`, `REMOVE`, `MORE`) with exact fonts, SVG stroke widths, and active press states matching the Home Feed.
+  - `#moreMenu` popover providing access to `LIKE / UNLIKE`, `PIN TO BOARD`, `REDDIT INFO`, and `REPORT MEME`.
+- **Interactive Bottom Filmstrip:**
+  - High-contrast Neo-Brutalist thumbnail strip (`w-14 h-14` tiles) with active indicator, smooth horizontal scroll, and auto-scroll centering on active meme.
+- **Modal Stack Elevation & Report Sync:**
+  - Lifted `BoardPicker` bottom sheet to root level with `z-[1065]`.
+  - Elevated `RedditInfoModal` and `ReportModal` to `z-[1070]`.
+  - Elevated `CreateBoardModal` to `z-[1075]`.
+  - Elevated `ShareModal` backdrop (`z-[1060]`), sheet (`z-[1065]`), and toast (`z-[1090]`).
+  - Fixed `handleSubmitReport` to support `reportTargetMeme || meme` and automatically remove reported memes from favorites.
+  - Hides `ShareModal` ribbon during gallery preview (`showRibbon={activeTab !== 'settings' && vaultLightboxIndex === null}`).
+- **Production Binaries:**
+  - Recompiled and verified `builds/app-release.apk`, `builds/meme-capsule-latest.apk`, `builds/meme-capsule-v3.9.apk` (5.8MB), `builds/meme-capsule-debug.apk` (12MB), and `builds/app-release.aab`, `builds/meme-capsule-v3.9.aab` (7.7MB).
 
 ---
 
